@@ -135,6 +135,33 @@ def trucks_management():
     save_json(TRUCKS_MANAGEMENT_FILE, trucks_management_data)
     return jsonify(trucks_management_data)
 
+@app.route('/killSwitch', methods=['POST'])
+def kill_switch():
+    data = request.get_json()
+    password = data.get('password')
+
+    if password != "1234":
+        return jsonify({"error": "Unauthorized"}), 401
+
+    # Delete all log files
+    for log_file in [INCIDENT_REPORTS_FILE, TRUCKS_STATUS_FILE, TRUCKS_MANAGEMENT_FILE]:
+        if os.path.exists(log_file):
+            os.remove(log_file)
+
+    # Clear in-memory data structures
+    global trucks, assignments, incident_queue
+    trucks = [
+        Truck("ABC123", (40.712776, -74.005974), True),
+        Truck("DEF456", (34.052235, -118.243683), True),
+        # Add 11 more hardcoded Truck entries here
+    ]
+    assignments.clear()
+    incident_queue.clear()
+
+    log_event("Kill switch activated: All logs deleted and memory cleared")
+
+    return jsonify({"message": "All logs deleted and memory cleared"})
+
 # Background Task to Dispatch Trucks
 @app.before_first_request
 def start_dispatcher():
@@ -168,6 +195,9 @@ def start_dispatcher():
                     incident_reports = load_json(INCIDENT_REPORTS_FILE)
                     incident_reports[report['hash']] = report
                     save_json(INCIDENT_REPORTS_FILE, incident_reports)
+                    
+                    # Debugging log to ensure the report is saved correctly
+                    log_event(f"Report updated in file: {incident_reports[report['hash']]}")
                 else:
                     log_event("No available trucks to assign")
             else:
