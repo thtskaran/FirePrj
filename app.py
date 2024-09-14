@@ -1,71 +1,86 @@
-from flask import Flask, request, jsonify
-from collections import namedtuple
-import json
 import os
+import json
 import uuid
 from datetime import datetime, timedelta
-import math
+from typing import NamedTuple
+from collections import deque
+from flask import Flask, request, jsonify
+from haversine import haversine
+import time
+from random import randint
 
 app = Flask(__name__)
 
-# Named Tuples
-Truck = namedtuple('Truck', ['license_plate', 'coordinates', 'available'])
-AssignedTruck = namedtuple('AssignedTruck', ['license_plate', 'assigned_hash'])
+# Paths
+REPORTS_LOG_PATH = './logs/reports'
+TRUCKS_LOG_PATH = './logs/trucks'
+INCIDENT_REPORTS_FILE = os.path.join(REPORTS_LOG_PATH, 'incident_reports.json')
+TRUCKS_STATUS_FILE = os.path.join(TRUCKS_LOG_PATH, 'trucks_status.json')
+TRUCKS_MANAGEMENT_FILE = os.path.join(TRUCKS_LOG_PATH, 'trucks_management.json')
 
 # Hardcoded Truck Data
+class Truck(NamedTuple):
+    license_plate: str
+    coordinates: tuple
+    available: bool
+
+class TruckAssignment(NamedTuple):
+    license_plate: str
+    assigned_hash: str
+
 trucks = [
-    Truck(license_plate='ABC123', coordinates=(34.052235, -118.243683), available=True),
-    Truck(license_plate='XYZ789', coordinates=(34.052235, -118.243683), available=True),
+    Truck("ABC123", (40.712776, -74.005974), True),
+    Truck("DEF456", (34.052235, -118.243683), True),
+    # Add 11 more hardcoded Truck entries here
 ]
 
-# Log Paths
-TRUCKS_LOG_PATH = './logs/trucks/'
-REPORTS_LOG_PATH = './logs/reports/'
+assignments = []
 
-# Ensure log directories exist
-os.makedirs(TRUCKS_LOG_PATH, exist_ok=True)
-os.makedirs(REPORTS_LOG_PATH, exist_ok=True)
+incident_queue = deque(maxlen=100)
 
-# Utility function to save data
-def save_json(filepath, data):
-    with open(filepath, 'w') as f:
-        json.dump(data, f, indent=4)
-
-# Utility function to load data
 def load_json(filepath):
-    if os.path.exists(filepath):
-        with open(filepath, 'r') as f:
-            return json.load(f)
-    else:
+    if not os.path.exists(filepath):
         return {}
+    with open(filepath, 'r') as file:
+        return json.load(file)
 
-# Haversine formula to calculate distance between two points
-def haversine(coord1, coord2):
-    R = 6371  # Earth radius in kilometers
-    lat1, lon1 = coord1
-    lat2, lon2 = coord2
-    phi1 = math.radians(lat1)
-    phi2 = math.radians(lat2)
-    delta_phi = math.radians(lat2 - lat1)
-    delta_lambda = math.radians(lon2 - lon1)
-    a = math.sin(delta_phi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(delta_lambda / 2) ** 2
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-    return R * c
+def save_json(filepath, data):
+    with open(filepath, 'w') as file:
+        json.dump(data, file, indent=4)
 
-# Get travel time at 45 km/h
-def get_travel_time_km(distance):
-    return distance / 45
+def log_event(message):
+    timestamp = datetime.now().isoformat()
+    with open(os.path.join(REPORTS_LOG_PATH, 'events.log'), 'a') as log_file:
+        log_file.write(f'[{timestamp}] {message}\n')
+
+def assign_truck(report):
+    global trucks
+    available_trucks = [truck for truck in trucks if truck.available]
+    
+    if not available_trucks:
+        return None
+    
+    # Assign the nearest available truck
+    nearest_truck = min(available_trucks, key=lambda t: haversine(t.coordinates, report['coordinates']))
+    nearest_truck_index = trucks.index(nearest_truck)
+    
+    trucks[nearest_truck_index] = nearest_truck._replace(available=False)
+    assignments.append(TruckAssignment(nearest_truck.license_plate, report['hash']))
+    
+    return nearest_truck.license_plate
 
 @app.route('/newReport', methods=['POST'])
 def new_report():
-    data = request.json
+    data = request.get_json()
+    
+    # Extract Parameters
     user_id = data.get('user_id')
     coordinates = tuple(data.get('coordinates'))
     severity = data.get('severity')
 
     if not (1 <= severity <= 10):
         return jsonify({"error": "Severity must be between 1 and 10"}), 400
-
+    
     report_hash = str(uuid.uuid4())
     timestamp = datetime.now().isoformat()
 
@@ -79,33 +94,87 @@ def new_report():
         "truck_assigned": None,
         "ETA": None
     }
+    
+    incident_queue.append((severity, report))
 
-    reports_data = load_json(os.path.join(REPORTS_LOG_PATH, 'incident_reports.json'))
-    reports_data[report_hash] = report
-    save_json(os.path.join(REPORTS_LOG_PATH, 'incident_reports.json'), reports_data)
+    log_event("New report arrived")
+    
+    # Save report immediately
+    incident_reports = load_json(INCIDENT_REPORTS_FILE)
+    incident_reports[report_hash] = report
+    save_json(INCIDENT_REPORTS_FILE, incident_reports)
 
     return jsonify({"hash": report_hash})
 
 @app.route('/getData', methods=['GET'])
 def get_data():
-    reports_data = load_json(os.path.join(REPORTS_LOG_PATH, 'incident_reports.json'))
-    return jsonify(reports_data)
+    incident_reports = load_json(INCIDENT_REPORTS_FILE)
+    return jsonify(incident_reports)
 
 @app.route('/repStatus', methods=['GET'])
 def rep_status():
     report_hash = request.args.get('hash')
-    reports_data = load_json(os.path.join(REPORTS_LOG_PATH, 'incident_reports.json'))
 
-    report = reports_data.get(report_hash)
-    if report:
-        return jsonify(report)
-    else:
+    incident_reports = load_json(INCIDENT_REPORTS_FILE)
+    report = incident_reports.get(report_hash)
+
+    if not report:
         return jsonify({"error": "Report not found"}), 404
+
+    return jsonify({
+        "truck_assigned": report["truck_assigned"],
+        "ETA": report["ETA"]
+    })
 
 @app.route('/trucksManagement', methods=['GET'])
 def trucks_management():
-    assigned_trucks_data = load_json(os.path.join(TRUCKS_LOG_PATH, 'assigned_trucks.json'))
-    return jsonify(assigned_trucks_data)
+    trucks_management_data = [
+        {"license_plate": assignment.license_plate, "assigned_hash": assignment.assigned_hash}
+        for assignment in assignments
+    ]
+    save_json(TRUCKS_MANAGEMENT_FILE, trucks_management_data)
+    return jsonify(trucks_management_data)
+
+# Background Task to Dispatch Trucks
+@app.before_first_request
+def start_dispatcher():
+    def dispatcher():
+        while True:
+            if incident_queue:
+                _, report = max(incident_queue, key=lambda x: x[0])
+                incident_queue.remove((report['severity'], report))
+                
+                assigned_truck = assign_truck(report)
+                if assigned_truck:
+                    log_event(f"New truck assigned: {assigned_truck}")
+                    report['truck_assigned'] = assigned_truck
+                    
+                    # Wait for 120 seconds to gather more reports
+                    time.sleep(120)
+                    
+                    # Compute ETA and update status
+                    travel_time = haversine(report['coordinates'], trucks[0].coordinates) / 45 * 60
+                    random_dispatch_time = randint(1, 3) * 60
+                    ETA = datetime.now() + timedelta(minutes=(travel_time + 3))
+                    
+                    report['ETA'] = ETA.isoformat()
+                    report['processed'] = True
+                    
+                    incident_reports = load_json(INCIDENT_REPORTS_FILE)
+                    incident_reports[report['hash']] = report
+                    save_json(INCIDENT_REPORTS_FILE, incident_reports)
+            
+            time.sleep(1)
+    
+    import threading
+    dispatch_thread = threading.Thread(target=dispatcher)
+    dispatch_thread.daemon = True
+    dispatch_thread.start()
 
 if __name__ == '__main__':
+    os.makedirs(REPORTS_LOG_PATH, exist_ok=True)
+    os.makedirs(TRUCKS_LOG_PATH, exist_ok=True)
+    
+    save_json(TRUCKS_STATUS_FILE, [t._asdict() for t in trucks])
+    
     app.run(debug=True)
