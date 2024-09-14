@@ -48,8 +48,11 @@ def save_json(filepath, data):
     with open(filepath, 'w') as file:
         json.dump(data, file, indent=4)
 
+def format_timestamp(dt):
+    return dt.strftime('%d/%m/%Y %H:%M:%S')
+
 def log_event(message):
-    timestamp = datetime.now().isoformat()
+    timestamp = format_timestamp(datetime.now())
     with open(os.path.join(REPORTS_LOG_PATH, 'events.log'), 'a') as log_file:
         log_file.write(f'[{timestamp}] {message}\n')
 
@@ -82,7 +85,7 @@ def new_report():
         return jsonify({"error": "Severity must be between 1 and 10"}), 400
     
     report_hash = str(uuid.uuid4())
-    timestamp = datetime.now().isoformat()
+    timestamp = format_timestamp(datetime.now())
 
     report = {
         "user_id": user_id,
@@ -166,8 +169,10 @@ def kill_switch():
 @app.before_first_request
 def start_dispatcher():
     def dispatcher():
+        empty_queue_counter = 0
         while True:
             if incident_queue:
+                empty_queue_counter = 0
                 _, report = max(incident_queue, key=lambda x: x[0])
                 incident_queue.remove((report['severity'], report))
                 
@@ -177,6 +182,7 @@ def start_dispatcher():
                     report['truck_assigned'] = assigned_truck
                     
                     # Wait for 120 seconds to gather more reports
+                    log_event("Waiting for 120 seconds before assigning ETA")
                     time.sleep(120)
                     
                     # Compute ETA and update status
@@ -184,12 +190,12 @@ def start_dispatcher():
                     random_dispatch_time = randint(1, 3) * 60
                     ETA = datetime.now() + timedelta(minutes=(travel_time + 3))
                     
-                    report['ETA'] = ETA.isoformat()
+                    report['ETA'] = format_timestamp(ETA)
                     report['processed'] = True
                     
                     # Log ETA assignment
                     minutes_left = int((ETA - datetime.now()).total_seconds() // 60)
-                    formatted_eta = ETA.strftime("%d/%m/%Y %H:%M:%S")
+                    formatted_eta = format_timestamp(ETA)
                     log_event(f"ETA assigned: {formatted_eta}, Minutes left: {minutes_left}")
                     
                     incident_reports = load_json(INCIDENT_REPORTS_FILE)
@@ -201,7 +207,9 @@ def start_dispatcher():
                 else:
                     log_event("No available trucks to assign")
             else:
-                log_event("Incident queue is empty")
+                empty_queue_counter += 1
+                if empty_queue_counter == 1:
+                    log_event("Incident queue is empty")
             
             time.sleep(1)
     
