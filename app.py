@@ -160,9 +160,18 @@ def start_dispatcher():
                     report['ETA'] = ETA.isoformat()
                     report['processed'] = True
                     
+                    # Log ETA assignment
+                    minutes_left = int((ETA - datetime.now()).total_seconds() // 60)
+                    formatted_eta = ETA.strftime("%d/%m/%Y %H:%M:%S")
+                    log_event(f"ETA assigned: {formatted_eta}, Minutes left: {minutes_left}")
+                    
                     incident_reports = load_json(INCIDENT_REPORTS_FILE)
                     incident_reports[report['hash']] = report
                     save_json(INCIDENT_REPORTS_FILE, incident_reports)
+                else:
+                    log_event("No available trucks to assign")
+            else:
+                log_event("Incident queue is empty")
             
             time.sleep(1)
     

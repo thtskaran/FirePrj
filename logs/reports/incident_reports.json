@@ -1,15 +1,28 @@
 {
-    "0f934864-815a-40a4-a4d2-04b0cee08c13": {
+    "d99caea1-3f74-4d81-a3a3-aeea2f5160a4": {
         "user_id": "user123",
         "coordinates": [
             40.712776,
             -74.005974
         ],
         "severity": 5,
-        "hash": "0f934864-815a-40a4-a4d2-04b0cee08c13",
-        "timestamp": "2024-09-14T10:30:24.408582",
-        "processed": true,
-        "truck_assigned": "ABC123",
-        "ETA": "2024-09-14T10:35:25.408981"
+        "hash": "d99caea1-3f74-4d81-a3a3-aeea2f5160a4",
+        "timestamp": "2024-09-14T10:44:35.644959",
+        "processed": false,
+        "truck_assigned": null,
+        "ETA": null
+    },
+    "7deb2e81-6624-4721-8918-4e9500e87ad4": {
+        "user_id": "user123",
+        "coordinates": [
+            40.712776,
+            -74.005974
+        ],
+        "severity": 5,
+        "hash": "7deb2e81-6624-4721-8918-4e9500e87ad4",
+        "timestamp": "2024-09-14T10:54:01.230840",
+        "processed": false,
+        "truck_assigned": null,
+        "ETA": null
     }
 }
