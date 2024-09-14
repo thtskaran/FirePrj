@@ -1,1 +1,21 @@
 [14/09/2024 15:39:02] Kill switch activated: All logs deleted and memory cleared
+[14/09/2024 17:38:19] New report arrived
+[14/09/2024 17:38:19] Incident queue is empty
+[14/09/2024 17:38:20] New truck assigned: ABC123
+[14/09/2024 17:38:20] Waiting for 120 seconds before assigning ETA
+[14/09/2024 17:38:24] New report arrived
+[14/09/2024 17:38:27] New report arrived
+[14/09/2024 17:38:31] New report arrived
+[14/09/2024 17:38:34] New report arrived
+[14/09/2024 17:38:37] New report arrived
+[14/09/2024 17:40:20] ETA assigned: 14/09/2024 17:51:43, Minutes left: 11
+[14/09/2024 17:40:20] Report updated in file: {'user_id': 'user1', 'coordinates': (40.73061, -73.935242), 'severity': 5, 'hash': 'd778fc1e-4170-40e9-8e2f-427d3a1e7be9', 'timestamp': '14/09/2024 17:38:19', 'processed': True, 'truck_assigned': 'ABC123', 'ETA': '14/09/2024 17:51:43'}
+[14/09/2024 17:40:21] New truck assigned: DEF456
+[14/09/2024 17:40:21] Waiting for 120 seconds before assigning ETA
+[14/09/2024 17:42:21] ETA assigned: 19/09/2024 21:32:20, Minutes left: 7429
+[14/09/2024 17:42:21] Report updated in file: {'user_id': 'user4', 'coordinates': (51.507351, -0.127758), 'severity': 10, 'hash': 'b1d0deea-e750-463b-84e7-cca2973cecd8', 'timestamp': '14/09/2024 17:38:31', 'processed': True, 'truck_assigned': 'DEF456', 'ETA': '19/09/2024 21:32:20'}
+[14/09/2024 17:42:22] No available trucks to assign
+[14/09/2024 17:42:23] No available trucks to assign
+[14/09/2024 17:42:24] No available trucks to assign
+[14/09/2024 17:42:25] No available trucks to assign
+[14/09/2024 17:42:26] Incident queue is empty

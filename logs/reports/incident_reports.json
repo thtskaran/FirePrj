@@ -1,0 +1,80 @@
+{
+    "d778fc1e-4170-40e9-8e2f-427d3a1e7be9": {
+        "user_id": "user1",
+        "coordinates": [
+            40.73061,
+            -73.935242
+        ],
+        "severity": 5,
+        "hash": "d778fc1e-4170-40e9-8e2f-427d3a1e7be9",
+        "timestamp": "14/09/2024 17:38:19",
+        "processed": true,
+        "truck_assigned": "ABC123",
+        "ETA": "14/09/2024 17:51:43"
+    },
+    "efc65e89-dc0d-4610-8796-739ec4b89cfd": {
+        "user_id": "user2",
+        "coordinates": [
+            34.052235,
+            -118.243683
+        ],
+        "severity": 8,
+        "hash": "efc65e89-dc0d-4610-8796-739ec4b89cfd",
+        "timestamp": "14/09/2024 17:38:24",
+        "processed": false,
+        "truck_assigned": null,
+        "ETA": null
+    },
+    "dc7992c1-99f1-490f-a0f9-531f65a2eb35": {
+        "user_id": "user3",
+        "coordinates": [
+            37.774929,
+            -122.419418
+        ],
+        "severity": 3,
+        "hash": "dc7992c1-99f1-490f-a0f9-531f65a2eb35",
+        "timestamp": "14/09/2024 17:38:27",
+        "processed": false,
+        "truck_assigned": null,
+        "ETA": null
+    },
+    "b1d0deea-e750-463b-84e7-cca2973cecd8": {
+        "user_id": "user4",
+        "coordinates": [
+            51.507351,
+            -0.127758
+        ],
+        "severity": 10,
+        "hash": "b1d0deea-e750-463b-84e7-cca2973cecd8",
+        "timestamp": "14/09/2024 17:38:31",
+        "processed": true,
+        "truck_assigned": "DEF456",
+        "ETA": "19/09/2024 21:32:20"
+    },
+    "e0f9e051-b1d3-4ba5-bd80-556e70a11d26": {
+        "user_id": "user5",
+        "coordinates": [
+            48.856613,
+            2.352222
+        ],
+        "severity": 7,
+        "hash": "e0f9e051-b1d3-4ba5-bd80-556e70a11d26",
+        "timestamp": "14/09/2024 17:38:34",
+        "processed": false,
+        "truck_assigned": null,
+        "ETA": null
+    },
+    "f4ab204e-ef57-4ad4-9194-3c445da35cd5": {
+        "user_id": "user6",
+        "coordinates": [
+            35.689487,
+            139.691711
+        ],
+        "severity": 4,
+        "hash": "f4ab204e-ef57-4ad4-9194-3c445da35cd5",
+        "timestamp": "14/09/2024 17:38:37",
+        "processed": false,
+        "truck_assigned": null,
+        "ETA": null
+    }
+}
