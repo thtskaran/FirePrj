@@ -78,8 +78,16 @@ def new_report():
     
     # Extract Parameters
     user_id = data.get('user_id')
-    coordinates = tuple(data.get('coordinates'))
+    coordinates = data.get('coordinates')
     severity = data.get('severity')
+
+    if coordinates is None:
+        return jsonify({"error": "Coordinates are required"}), 400
+
+    try:
+        coordinates = tuple(coordinates)
+    except TypeError:
+        return jsonify({"error": "Invalid coordinates format"}), 400
 
     if not (1 <= severity <= 10):
         return jsonify({"error": "Severity must be between 1 and 10"}), 400
