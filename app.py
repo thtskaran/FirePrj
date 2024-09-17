@@ -5,11 +5,13 @@ from datetime import datetime, timedelta
 from typing import NamedTuple
 from collections import deque
 from flask import Flask, request, jsonify
+from flask_cors import CORS  # Import CORS
 from haversine import haversine
 import time
 from random import randint
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
 
 # Paths
 REPORTS_LOG_PATH = './logs/reports'
