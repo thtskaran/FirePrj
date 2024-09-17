@@ -17,7 +17,8 @@ client = TelegramClient('bot', API_ID, API_HASH).start(bot_token=BOT_TOKEN)
 
 # In-memory dictionary to track user requests and state
 user_requests = {}
-requesting_coordinates = set()
+awaiting_address = set()
+awaiting_coordinates = set()
 awaiting_severity = {}
 
 # Load user requests from JSON file
@@ -56,7 +57,7 @@ async def start(event):
     await event.respond('Welcome! I am here to help you. If you need assistance, use words such as: fire, case, report, emergency, accident, help.')
 
 @client.on(events.NewMessage(incoming=True))
-async def chat_handler(event):
+async def message_handler(event):
     user_id = event.sender_id
     message = event.message.message.lower()
 
@@ -66,7 +67,7 @@ async def chat_handler(event):
 
     if user_id in awaiting_severity:
         await event.respond('Please choose the severity on a scale of 1-10 using the provided buttons.')
-    elif user_id in requesting_coordinates:
+    elif user_id in awaiting_coordinates:
         try:
             message_parts = message.split(',')
 
@@ -76,7 +77,7 @@ async def chat_handler(event):
             
             latitude, longitude = float(message_parts[0].strip()), float(message_parts[1].strip())
             awaiting_severity[user_id] = [latitude, longitude]
-            requesting_coordinates.remove(user_id)
+            awaiting_coordinates.remove(user_id)
             
             # Ask for severity
             buttons = [
@@ -90,8 +91,30 @@ async def chat_handler(event):
         except Exception as e:
             await event.respond(f'Error: {str(e)}')
     elif any(keyword in message for keyword in ['fire', 'case', 'report', 'emergency', 'accident', 'help']):
+        awaiting_address.add(user_id)
         await event.respond('We are here to help! Please provide your address (street name, city):')
-        requesting_coordinates.add(user_id)
+    elif user_id in awaiting_address:
+        coordinates = get_coordinates(GEO_API_KEY, message)
+        
+        if coordinates:
+            latitude = coordinates['lat']
+            longitude = coordinates['lng']
+            awaiting_severity[user_id] = [latitude, longitude]
+            awaiting_address.remove(user_id)
+            
+            # Ask for severity
+            buttons = [
+                [Button.inline(str(i), str(i)) for i in range(j, j + 5)]
+                for j in range(1, 11, 5)
+            ]
+            await event.respond(
+                'We have fetched the coordinates. Please rate the severity of the case on a scale of 1-10:',
+                buttons=buttons
+            )
+        else:
+            awaiting_coordinates.add(user_id)
+            await event.respond('Unable to fetch coordinates. Please provide the coordinates in the format: latitude, longitude.')
+
     elif user_id in user_requests:
         # If user already has a report, fetch the status of their report
         report_hash = user_requests[user_id]
@@ -137,33 +160,6 @@ async def callback_query_handler(event):
                 
         except Exception as e:
             await event.respond(f'Error: {str(e)}')
-
-@client.on(events.NewMessage(incoming=True))
-async def address_handler(event):
-    user_id = event.sender_id
-    message = event.message.message.lower()
-
-    # Check if we are expecting address from the user
-    if user_id in requesting_coordinates:
-        coordinates = get_coordinates(GEO_API_KEY, message)
-
-        if coordinates:
-            latitude = coordinates['lat']
-            longitude = coordinates['lng']
-            awaiting_severity[user_id] = [latitude, longitude]
-            requesting_coordinates.remove(user_id)
-            
-            # Ask for severity
-            buttons = [
-                [Button.inline(str(i), str(i)) for i in range(j, j + 5)]
-                for j in range(1, 11, 5)
-            ]
-            await event.respond(
-                'We have fetched the coordinates. Please rate the severity of the case on a scale of 1-10:',
-                buttons=buttons
-            )
-        else:
-            await event.respond('Unable to fetch coordinates. Please provide the coordinates in the format: latitude, longitude.')
 
 client.start()
 client.run_until_disconnected()
