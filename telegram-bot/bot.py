@@ -99,6 +99,7 @@ async def chat_handler(event):
 
 async def notify_user(user_id, message):
     try:
+        user_id = int(user_id)  # Ensure user_id is an integer
         user = await client.get_input_entity(InputPeerUser(user_id, 0))
         await client.send_message(user, message)
     except Exception as e:
