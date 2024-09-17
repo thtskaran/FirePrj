@@ -107,14 +107,19 @@ async def notify_user(user_id, message):
 
 async def check_assignments():
     while True:
-        for user_id, report_hash in user_requests.items():
+        for user_id, report_hash in list(user_requests.items()):
             response = requests.get(f'{FLASK_ENDPOINT}/repStatus', params={'hash': report_hash})
             response_data = response.json()
             if response_data.get('truck_assigned') and not response_data.get('processed'):
                 message = f'Truck Assigned: {response_data["truck_assigned"]}\nETA: {response_data["ETA"]}'
                 await notify_user(user_id, message)
-                response_data['processed'] = True
-                requests.post(f'{FLASK_ENDPOINT}/newReport', json=response_data)
+                # Mark the report as processed to avoid further notifications
+                incident_reports = requests.get(f'{FLASK_ENDPOINT}/getData').json()
+                if report_hash in incident_reports:
+                    incident_reports[report_hash]['processed'] = True
+                    requests.post(f'{FLASK_ENDPOINT}/newReport', json=incident_reports[report_hash])
+                del user_requests[user_id]
+                save_user_requests()
         await asyncio.sleep(60)
 
 client.loop.create_task(check_assignments())
