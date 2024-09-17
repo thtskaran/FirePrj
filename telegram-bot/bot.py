@@ -10,6 +10,7 @@ API_ID = os.getenv('API_ID')
 API_HASH = os.getenv('API_HASH')
 BOT_TOKEN = os.getenv('BOT_TOKEN')
 FLASK_ENDPOINT = os.getenv('FLASK_ENDPOINT')
+GEO_API_KEY = os.getenv('GEO_API_KEY')
 
 # Initialize Telegram client
 client = TelegramClient('bot', API_ID, API_HASH).start(bot_token=BOT_TOKEN)
@@ -32,6 +33,23 @@ def save_user_requests():
         json.dump(user_requests, f)
 
 load_user_requests()
+
+# Geocoding function
+def get_coordinates(api_key, address):
+    url = "https://api.opencagedata.com/geocode/v1/json"
+    params = {
+        'q': address,
+        'key': api_key
+    }
+    response = requests.get(url, params=params)
+    if response.status_code == 200:
+        data = response.json()
+        if data['results']:
+            return data['results'][0]['geometry']
+        else:
+            return None
+    else:
+        return None
 
 @client.on(events.NewMessage(pattern='/start'))
 async def start(event):
@@ -72,7 +90,7 @@ async def chat_handler(event):
         except Exception as e:
             await event.respond(f'Error: {str(e)}')
     elif any(keyword in message for keyword in ['fire', 'case', 'report', 'emergency', 'accident', 'help']):
-        await event.respond('We are here to help! Please provide the coordinates in the format: latitude, longitude.')
+        await event.respond('We are here to help! Please provide your address (street name, city):')
         requesting_coordinates.add(user_id)
     elif user_id in user_requests:
         # If user already has a report, fetch the status of their report
@@ -119,6 +137,33 @@ async def callback_query_handler(event):
                 
         except Exception as e:
             await event.respond(f'Error: {str(e)}')
+
+@client.on(events.NewMessage(incoming=True))
+async def address_handler(event):
+    user_id = event.sender_id
+    message = event.message.message.lower()
+
+    # Check if we are expecting address from the user
+    if user_id in requesting_coordinates:
+        coordinates = get_coordinates(GEO_API_KEY, message)
+
+        if coordinates:
+            latitude = coordinates['lat']
+            longitude = coordinates['lng']
+            awaiting_severity[user_id] = [latitude, longitude]
+            requesting_coordinates.remove(user_id)
+            
+            # Ask for severity
+            buttons = [
+                [Button.inline(str(i), str(i)) for i in range(j, j + 5)]
+                for j in range(1, 11, 5)
+            ]
+            await event.respond(
+                'We have fetched the coordinates. Please rate the severity of the case on a scale of 1-10:',
+                buttons=buttons
+            )
+        else:
+            await event.respond('Unable to fetch coordinates. Please provide the coordinates in the format: latitude, longitude.')
 
 client.start()
 client.run_until_disconnected()
