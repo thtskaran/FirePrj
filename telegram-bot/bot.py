@@ -1,11 +1,8 @@
 import os
 import json
-import random
 import requests
-import asyncio
 from dotenv import load_dotenv
-from telethon import TelegramClient, events
-from telethon.tl.types import InputPeerUser
+from telethon import TelegramClient, events, Button
 
 # Load environment variables
 load_dotenv()
@@ -20,6 +17,7 @@ client = TelegramClient('bot', API_ID, API_HASH).start(bot_token=BOT_TOKEN)
 # In-memory dictionary to track user requests and state
 user_requests = {}
 requesting_coordinates = set()
+awaiting_severity = {}
 
 # Load user requests from JSON file
 def load_user_requests():
@@ -43,12 +41,40 @@ async def start(event):
 async def chat_handler(event):
     user_id = event.sender_id
     message = event.message.message.lower()
-    
+
     # Ignore messages from the bot itself
     if user_id == (await client.get_me()).id:
         return
-    
-    if user_id in user_requests:
+
+    if user_id in awaiting_severity:
+        await event.respond('Please choose the severity on a scale of 1-10 using the provided buttons.')
+    elif user_id in requesting_coordinates:
+        try:
+            message_parts = message.split(',')
+
+            if len(message_parts) != 2:
+                await event.respond('Invalid format. Please provide the coordinates in correct format: latitude, longitude.')
+                return
+            
+            latitude, longitude = float(message_parts[0].strip()), float(message_parts[1].strip())
+            awaiting_severity[user_id] = [latitude, longitude]
+            requesting_coordinates.remove(user_id)
+            
+            # Ask for severity
+            buttons = [
+                [Button.inline(str(i), str(i)) for i in range(j, j + 5)]
+                for j in range(1, 11, 5)
+            ]
+            await event.respond(
+                'Please rate the severity of the case on a scale of 1-10:',
+                buttons=buttons
+            )
+        except Exception as e:
+            await event.respond(f'Error: {str(e)}')
+    elif any(keyword in message for keyword in ['fire', 'case', 'report', 'emergency', 'accident', 'help']):
+        await event.respond('We are here to help! Please provide the coordinates in the format: latitude, longitude.')
+        requesting_coordinates.add(user_id)
+    elif user_id in user_requests:
         # If user already has a report, fetch the status of their report
         report_hash = user_requests[user_id]
         response = requests.get(f'{FLASK_ENDPOINT}/repStatus', params={'hash': report_hash})
@@ -60,19 +86,21 @@ async def chat_handler(event):
             truck_assigned = response_data['truck_assigned']
             eta = response_data['ETA']
             await event.respond(f'Truck Assigned: {truck_assigned}\nETA: {eta}')
-    elif user_id in requesting_coordinates:
-        try:
-            message_parts = message.split(',')
+    else:
+        await event.respond('Hello! How can I assist you today?')
 
-            if len(message_parts) != 2:
-                await event.respond('Invalid format. Please provide the coordinates in correct format: latitude, longitude.')
-                return
-            
-            latitude, longitude = float(message_parts[0].strip()), float(message_parts[1].strip())
-            severity = random.randint(1, 5)
+@client.on(events.CallbackQuery)
+async def callback_query_handler(event):
+    user_id = event.sender_id
+    data = event.data.decode('utf-8')
+
+    if user_id in awaiting_severity:
+        try:
+            severity = int(data)
+            coordinates = awaiting_severity[user_id]
             data = {
                 'user_id': user_id,
-                'coordinates': [latitude, longitude],
+                'coordinates': coordinates,
                 'severity': severity
             }
 
@@ -87,41 +115,10 @@ async def chat_handler(event):
                 save_user_requests()
                 await event.respond(f'Report submitted successfully with severity {severity}. Your report hash is {report_hash}')
 
-            requesting_coordinates.remove(user_id)
-            
+            del awaiting_severity[user_id]
+                
         except Exception as e:
             await event.respond(f'Error: {str(e)}')
-    elif any(keyword in message for keyword in ['fire', 'case', 'report', 'emergency', 'accident', 'help']):
-        await event.respond('We are here to help! Please provide the coordinates in the format: latitude, longitude.')
-        requesting_coordinates.add(user_id)
-    else:
-        await event.respond('Hello! How can I assist you today?')
 
-async def notify_user(user_id, message):
-    try:
-        user_id = int(user_id)  # Ensure user_id is an integer
-        user = await client.get_input_entity(InputPeerUser(user_id, 0))
-        await client.send_message(user, message)
-    except Exception as e:
-        print(f'Error notifying user {user_id}: {str(e)}')
-
-async def check_assignments():
-    while True:
-        for user_id, report_hash in list(user_requests.items()):
-            response = requests.get(f'{FLASK_ENDPOINT}/repStatus', params={'hash': report_hash})
-            response_data = response.json()
-            if response_data.get('truck_assigned') and not response_data.get('processed'):
-                message = f'Truck Assigned: {response_data["truck_assigned"]}\nETA: {response_data["ETA"]}'
-                await notify_user(user_id, message)
-                # Mark the report as processed to avoid further notifications
-                incident_reports = requests.get(f'{FLASK_ENDPOINT}/getData').json()
-                if report_hash in incident_reports:
-                    incident_reports[report_hash]['processed'] = True
-                    requests.post(f'{FLASK_ENDPOINT}/newReport', json=incident_reports[report_hash])
-                del user_requests[user_id]
-                save_user_requests()
-        await asyncio.sleep(60)
-
-client.loop.create_task(check_assignments())
 client.start()
 client.run_until_disconnected()
