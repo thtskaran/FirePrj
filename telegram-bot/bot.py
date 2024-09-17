@@ -114,7 +114,7 @@ async def check_assignments():
                 message = f'Truck Assigned: {response_data["truck_assigned"]}\nETA: {response_data["ETA"]}'
                 await notify_user(user_id, message)
                 response_data['processed'] = True
-                requests.post(f'{FLASK_ENDPOINT}/updateReport', json=response_data)
+                requests.post(f'{FLASK_ENDPOINT}/newReport', json=response_data)
         await asyncio.sleep(60)
 
 client.loop.create_task(check_assignments())
