@@ -4,3 +4,4 @@ haversine==2.5.1
 uuid==1.30
 requests==2.27.1
 python-dotenv==0.19.2
+flask_cors
