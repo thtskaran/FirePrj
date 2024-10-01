@@ -1,69 +1,16 @@
-# Incident Report and Truck Assignment System
+# Project Overview
 
-### Overview
-This Flask application is designed to handle incident reports and automatically assign trucks based on the severity and location of incidents. The system includes multiple endpoints for creating reports, checking report statuses, managing truck assignments, and a kill switch to reset all data.
+This project was created for an internal hackathon for Smart India Hackathon (SIH). The goal is to develop a system for managing incident reports and truck assignments. Although initially developed for the hackathon, there are plans to make it a real-world tool.
 
-## Table of Contents
-- [Requirements](#requirements)
-- [Setup Instructions](#setup-instructions)
-- [Project Structure](#project-structure)
-- [Endpoints](#endpoints)
-  - [/newReport](#newreport)
-  - [/getData](#getdata)
-  - [/repStatus](#repstatus)
-  - [/trucksManagement](#trucksmanagement)
-  - [/killSwitch](#killswitch)
-- [Edge Cases and CURL Requests](#edge-cases-and-curl-requests)
+## Features
 
-## Requirements
-- Python 3.x
-- Flask
-- Haversine
-- uuid
-- requests
+### Incident Reporting
 
-## Setup Instructions
-1. **Clone the Repository:**
-   ```sh
-   git clone https://github.com/your_username/incident-truck-assignment.git
-   cd incident-truck-assignment
-   ```
+Users can report incidents with details such as user ID, coordinates, and severity.
 
-2. **Create a Virtual Environment (optional but recommended):**
-   ```sh
-   python -m venv env
-   source env/bin/activate    # On Windows use `env\Scripts\activate`
-   ```
+**Endpoint:** `/newReport`
 
-3. **Install Dependencies:**
-   ```sh
-   pip install -r requirements.txt
-   ```
-
-4. **Run the Application:**
-   ```sh
-   python app.py
-   ```
-
-## Project Structure
-```
-.
-├── app.py                  # Main application file
-├── requirements.txt        # Python dependencies
-└── logs/                   # Directory for storing log files
-    ├── reports/
-    │   ├── incident_reports.json 
-    │   └── events.log
-    └── trucks/
-        ├── trucks_status.json
-        └── trucks_management.json
-```
-
-## Endpoints
-### /newReport
 **Method:** POST
-
-Creates a new incident report.
 
 **Payload:**
 ```json
@@ -86,37 +33,22 @@ Creates a new incident report.
 curl -X POST http://127.0.0.1:5000/newReport -H "Content-Type: application/json" -d '{"user_id":"user123", "coordinates":[40.712776, -74.005974], "severity":5}'
 ```
 
-### /getData
+### Report Status
+
+Check the status of a report using its unique hash.
+
+**Endpoint:** `/repStatus`
+
 **Method:** GET
 
-Retrieves all incident reports.
-
-**Response:**
-```json
-{
-    "report_hash_1": {...},
-    "report_hash_2": {...}
-}
-```
-
-**CURL:**
-```sh
-curl -X GET http://127.0.0.1:5000/getData
-```
-
-### /repStatus
-**Method:** GET
-
-Checks the status of a specific report.
-
-**Query Parameters:**
-- `hash`: Unique hash of the report.
+**Parameters:**
+- `hash`: The unique hash of the report.
 
 **Response:**
 ```json
 {
     "truck_assigned": "ABC123",
-    "ETA": "14/09/2024 13:12:56"
+    "ETA": "14/09/2024 17:51:43"
 }
 ```
 
@@ -125,10 +57,13 @@ Checks the status of a specific report.
 curl -X GET "http://127.0.0.1:5000/repStatus?hash=unique_report_hash"
 ```
 
-### /trucksManagement
-**Method:** GET
+### Truck Management
 
 Provides details on current truck assignments.
+
+**Endpoint:** `/trucksManagement`
+
+**Method:** GET
 
 **Response:**
 ```json
@@ -146,10 +81,13 @@ Provides details on current truck assignments.
 curl -X GET http://127.0.0.1:5000/trucksManagement
 ```
 
-### /killSwitch
-**Method:** POST
+### Kill Switch
 
 Deletes all logs and resets in-memory data structures.
+
+**Endpoint:** `/killSwitch`
+
+**Method:** POST
 
 **Payload:**
 ```json
@@ -173,6 +111,7 @@ curl -X POST http://127.0.0.1:5000/killSwitch -H "Content-Type: application/json
 ## Edge Cases and CURL Requests
 
 ### Invalid Severity in /newReport
+
 **Description:** Severity value must be between 1 and 10.
 
 **CURL:**
@@ -188,6 +127,7 @@ curl -X POST http://127.0.0.1:5000/newReport -H "Content-Type: application/json"
 ```
 
 ### Unauthorized Access to /killSwitch
+
 **Description:** Attempting to access the kill switch with an incorrect password.
 
 **CURL:**
@@ -203,6 +143,7 @@ curl -X POST http://127.0.0.1:5000/killSwitch -H "Content-Type: application/json
 ```
 
 ### Non-existent Report in /repStatus
+
 **Description:** Checking the status of a report that does not exist.
 
 **CURL:**
@@ -215,4 +156,88 @@ curl -X GET "http://127.0.0.1:5000/repStatus?hash=non_existent_hash"
 {
     "error": "Report not found"
 }
+```
+
+## Technologies Used
+
+### Flask
+
+Flask is used to create the API endpoints for incident reporting, status checking, and truck management.
+
+### Haversine
+
+The Haversine formula is used to calculate the distance between two points on the Earth's surface, which helps in determining the nearest available truck to an incident location.
+
+### Reverse Geocoding
+
+Reverse geocoding is used to convert coordinates into a human-readable address, which can be useful for logging and reporting purposes.
+
+### Random Delay in Truck Dispatch
+
+Currently, a random delay is used to simulate the time it takes for a truck to be dispatched to an incident. In future production versions, this will be replaced with a more realistic model based on traffic data, distance, and other factors.
+
+## Truck Dispatch Logic
+
+When an incident is reported, the system assigns the nearest available truck to the incident based on the Haversine distance. The truck's estimated time of arrival (ETA) is calculated and returned in the response. The random delay in truck dispatch will be changed in future production to something more realistic.
+
+## Telegram Bot
+
+The project includes a Telegram bot for user interaction.
+
+### Start Command
+
+**Description:** Starts the bot and provides a welcome message.
+
+### Message Handler
+
+**Description:** Handles incoming messages and processes user requests.
+
+### Callback Query Handler
+
+**Description:** Handles callback queries from inline buttons.
+
+### User Requests
+
+User requests are tracked in-memory and saved to a JSON file.
+
+**Load User Requests:**
+```py
+def load_user_requests():
+    global user_requests
+    if os.path.exists('user_requests.json'):
+        with open('user_requests.json', 'r') as f:
+            user_requests = json.load(f)
+```
+
+**Save User Requests:**
+```py
+def save_user_requests():
+    with open('user_requests.json', 'w') as f:
+        json.dump(user_requests, f)
+```
+
+## Logging
+
+Events are logged to a file for auditing and debugging purposes.
+
+**Log Event:**
+```py
+def log_event(message):
+    timestamp = format_timestamp(datetime.now())
+    with open(os.path.join(REPORTS_LOG_PATH, 'events.log'), 'a') as log_file:
+        log_file.write(f'[{timestamp}] {message}\n')
+```
+
+## Requirements
+
+The project dependencies are listed in [`requirements.txt`](command:_github.copilot.openRelativePath?%5B%7B%22scheme%22%3A%22file%22%2C%22authority%22%3A%22%22%2C%22path%22%3A%22%2FUsers%2Fkaran%2FDocuments%2FProjects%2FFirePrj%2Frequirements.txt%22%2C%22query%22%3A%22%22%2C%22fragment%22%3A%22%22%7D%2C%223fbfc87f-7457-481f-8d1f-66f7d38bee94%22%5D "/Users/karan/Documents/Projects/FirePrj/requirements.txt"):
+
+```txt
+Flask==2.2.5
+werkzeug==3.0.4
+haversine==2.5.1
+uuid==1.30
+requests==2.27.1
+python-dotenv==0.19.2
+flask_cors
 ```

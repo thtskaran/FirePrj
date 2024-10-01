@@ -1,4 +1,5 @@
 /notes
+/myenv
 /telegram-bot/.env
 /telegram-bot/bot.session
 /telegram-bot/bot.session-journal
