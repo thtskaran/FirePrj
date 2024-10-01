@@ -234,4 +234,4 @@ if __name__ == '__main__':
     
     save_json(TRUCKS_STATUS_FILE, [t._asdict() for t in trucks])
     
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True, host='0.0.0.0', port=5070)
