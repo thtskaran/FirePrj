@@ -164,10 +164,17 @@ def kill_switch():
     # Clear in-memory data structures
     global trucks, assignments, incident_queue
     trucks = [
-        Truck("ABC123", (40.712776, -74.005974), True),
-        Truck("DEF456", (34.052235, -118.243683), True),
-        # Add 11 more hardcoded Truck entries here
-    ]
+    Truck("WB01A1234", (22.5726, 88.3639), True),
+    Truck("WB01B5678", (22.5726, 88.3639), True),
+    Truck("WB01C9101", (22.5726, 88.3639), True),
+    Truck("WB01D1121", (22.5726, 88.3639), True),
+    Truck("WB01E3141", (22.5726, 88.3639), True),
+    Truck("WB01F5161", (22.5726, 88.3639), True),
+    Truck("WB01G7181", (22.5726, 88.3639), True),
+    Truck("WB01H9202", (22.5726, 88.3639), True),
+    Truck("WB01I1222", (22.5726, 88.3639), True),
+    Truck("WB01J3242", (22.5726, 88.3639), True),
+]
     assignments.clear()
     incident_queue.clear()
 
